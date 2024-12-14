@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ellie's Travel Trivia Game</title>
+    <link rel="stylesheet" href="css/aboutme.css">
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            text-align: center;
+            background-color: #ffe4e1;
+            margin: 20px;
+            display: flex;
+            justify-content: space-between;
+        }
+        #trivia-container {
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 20px;
+            border: 2px solid #ccc;
+            border-radius: 10px;
+            background-color: white;
+            flex: 1;
+        }
+        #scoreboard {
+            width: 250px;
+            margin-left: 20px;
+            padding: 20px;
+            border: 2px solid #ccc;
+            border-radius: 10px;
+            background-color: white;
+            flex: 0 0 250px;
+        }
+        #scoreboard h2 {
+            text-align: center;
+        }
+        #scoreboard ul {
+            list-style: none;
+            padding: 0;
+        }
+        #scoreboard li {
+            padding: 5px 0;
+            font-size: 1.1em;
+        }
+        .question {
+            font-size: 1.2em;
+            margin-bottom: 20px;
+        }
+        .options {
+            display: flex;
+            flex-direction: column;
+        }
+        .options button {
+            margin: 5px 0;
+            padding: 10px;
+            font-size: 1em;
+            background-color: #d45982;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+        .options button:hover {
+            background-color: #a7083b;
+        }
+        #feedback {
+            margin: 15px 0;
+            font-size: 1.1em;
+            font-weight: bold;
+        }
+        #score {
+            margin-top: 20px;
+            font-size: 1.1em;
+            font-weight: bold;
+        }
+        #next-question, #restart {
+            margin-top: 20px;
+            padding: 10px;
+            font-size: 1em;
+            background-color: #d45982;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+        #next-question:hover, #restart:hover {
+            background-color: #a7083b;
+        }
+        #initials-input {
+            margin-top: 20px;
+            display: none;
+            font-size: 1.2em;
+        }
+        #initials-input input {
+            padding: 5px;
+            font-size: 1em;
+        }
+    </style>
+</head>
+<body>
+    <div id="scoreboard">
+        <h2>Top 5 Scores</h2>
+        <ul id="high-scores-list">
+            <!-- High scores will be listed here -->
+        </ul>
+    </div>
+
+    <div id="trivia-container">
+        <h1>Ellie's Travel Trivia Game</h1>
+        <p id="question" class="question">Loading question...</p>
+        <div class="options" id="options"></div>
+        <p id="feedback"></p>
+        <p id="score"></p>
+        <button id="next-question" style="display: none;">Next Question</button>
+        <button id="restart" style="display: none;">Play Again</button>
+        <div id="initials-input">
+            <label for="initials">Enter your initials: </label>
+            <input type="text" id="initials" maxlength="3">
+            <button onclick="submitScore()">Submit</button>
+        </div>
+    </div>
+
+    <script>
+        const questions = [
+            { question: "What was my favorite place I visited?", options: ["London", "Copenhagen", "Prague", "Porto"], correct: 3 },
+            { question: "Where did I celebrate my 21st birthday?", options: ["Copenhagen", "Isle of Skye", "Budapest", "Edinburgh"], correct: 0 },
+            { question: "Where did I go for the second part of free travel week? (Hint: It's my MSP's constituency)", options: ["Glasgow Kelvin", "Skye, Lochaber, and Badenoch", "Aberdeenshire West", "Falkirk East"], correct: 2 },
+            { question: "Which city did I pull an all-nighter in?", options: ["Edinburgh", "Berlin", "Prague", "Amsterdam"], correct: 1 },
+            { question: "Which city did I study abroad in in 2022 and revisit on this trip?", options: ["Copenhagen", "Brussels", "Krakow", "London"], correct: 3 },
+            { question: "Who came to visit me in Edinburgh?", options: ["My mom", "Ellie Freeman", "Calvin", "Yve"], correct: 2 },
+            { question: "What is my favorite restaurant in Edinburgh?", options: ["Bodrum Express", "Oink", "Mosque Kitchen", "The Parliament's Cafe"], correct: 0 },
+            { question: "Which city did I have to buy a scarf in because I was too cold?", options: ["Krakow", "Stockholm", "Berlin", "Edinburgh"], correct: 1 },
+            { question: "Which city did my credit card get blocked in, leaving me with no money?", options: ["Brussels", "Berlin", "Prague", "Porto"], correct: 1 },
+            { question: "Where am I going next?", options: ["Vietnam", "Canada", "Switzerland", "France"], correct: 3 },
+        ];
+    
+        let currentQuestionIndex = 0;
+        let score = 0;
+        const questionElement = document.getElementById('question');
+        const optionsElement = document.getElementById('options');
+        const feedbackElement = document.getElementById('feedback');
+        const scoreElement = document.getElementById('score');
+        const nextQuestionButton = document.getElementById('next-question');
+        const restartButton = document.getElementById('restart');
+        const highScoresList = document.getElementById('high-scores-list');
+        const initialsInput = document.getElementById('initials-input');
+        const initialsField = document.getElementById('initials');
+        
+        let highScores = JSON.parse(localStorage.getItem('highScores')) || [];
+    
+        function loadHighScores() {
+            highScoresList.innerHTML = '';
+            highScores.sort((a, b) => b.score - a.score).slice(0, 5).forEach(scoreObj => {
+                const li = document.createElement('li');
+                li.textContent = `${scoreObj.initials} - ${scoreObj.score}`;
+                highScoresList.appendChild(li);
+            });
+        }
+    
+        function loadQuestion() {
+            const currentQuestion = questions[currentQuestionIndex];
+            questionElement.textContent = currentQuestion.question;
+            optionsElement.innerHTML = '';
+            currentQuestion.options.forEach((option, index) => {
+                const button = document.createElement('button');
+                button.textContent = option;
+                button.onclick = () => checkAnswer(index);
+                optionsElement.appendChild(button);
+            });
+            feedbackElement.textContent = '';
+            nextQuestionButton.style.display = 'none';
+        }
+    
+        function checkAnswer(selectedIndex) {
+            const currentQuestion = questions[currentQuestionIndex];
+            
+            // Disable all buttons to prevent multiple answers
+            const buttons = optionsElement.querySelectorAll('button');
+            buttons.forEach(button => {
+                button.disabled = true;
+            });
+
+            if (selectedIndex === currentQuestion.correct) {
+                feedbackElement.textContent = "Correct!";
+                feedbackElement.style.color = "green";
+                score++;
+            } else {
+                feedbackElement.textContent = `Oops! The correct answer was "${currentQuestion.options[currentQuestion.correct]}".`;
+                feedbackElement.style.color = "red";
+            }
+            scoreElement.textContent = `Score: ${score}/${questions.length}`;
+            nextQuestionButton.style.display = 'inline-block';
+        }
+    
+        nextQuestionButton.onclick = () => {
+            currentQuestionIndex++;
+            if (currentQuestionIndex < questions.length) {
+                loadQuestion();
+            } else {
+                endGame();
+            }
+        };
+    
+        function endGame() {
+            questionElement.textContent = "Game Over! Thanks for playing :)";
+            optionsElement.innerHTML = '';
+            nextQuestionButton.style.display = 'none';
+            
+            if (isTop5(score)) {
+                initialsInput.style.display = 'inline-block';
+            } else {
+                initialsInput.style.display = 'none';
+                restartButton.style.display = 'inline-block';
+            }
+        }
+    
+        function isTop5(score) {
+            return highScores.length < 5 || score > highScores[highScores.length - 1].score;
+        }
+    
+        function submitScore() {
+            const initials = initialsField.value.trim().toUpperCase();
+            if (initials && !highScores.some(scoreObj => scoreObj.initials === initials)) {
+                highScores.push({ initials, score });
+                highScores.sort((a, b) => b.score - a.score).slice(0, 5);
+                localStorage.setItem('highScores', JSON.stringify(highScores));
+                loadHighScores();
+            }
+            initialsInput.style.display = 'none';
+            restartButton.style.display = 'inline-block';
+        }
+    
+        restartButton.onclick = () => {
+            currentQuestionIndex = 0;
+            score = 0;
+            initialsField.value = '';
+            restartButton.style.display = 'none';
+            loadQuestion();
+        };
+    
+        loadQuestion();
+        loadHighScores();
+    </script>
+</body>
+</html>
